@@ -377,15 +377,12 @@ function showResult(energy, satisfaction, zone, stateId, rx, ry) {
 }
 
 function sendToSheets(data) {
-  if (!SCRIPT_URL || SCRIPT_URL === "https://script.google.com/macros/s/AKfycbwg8NpJE7VOR5y-1fgSiawHIesQQf1QemQlDrJb0KiK54Mjh7Kfm1ZS85kcyZsdbc02yA/exec") return;
-  const sending = document.getElementById("sending");
-  sending.style.display = "flex";
-  const payload = new FormData();
-  Object.entries(data).forEach(([k, v]) => payload.append(k, v));
-  payload.append("timestamp", new Date().toISOString());
-  fetch(SCRIPT_URL, { method: "POST", body: payload })
-    .catch(() => {})
-    .finally(() => { sending.style.display = "none"; });
+  if (!SCRIPT_URL || SCRIPT_URL === "WKLEJ_TUTAJ_URL_APPS_SCRIPT") return;
+  const params = new URLSearchParams();
+  Object.entries(data).forEach(([k, v]) => params.append(k, v));
+  params.append("timestamp", new Date().toISOString());
+  const url = SCRIPT_URL + "?" + params.toString();
+  fetch(url, { method: "GET", mode: "no-cors" });
 }
 
 function reset() {
