@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mapa Nastroju — Decathlon</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #0A0F0D;
+    color: #EEF0EB;
+    font-family: 'Courier New', monospace;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 24px 16px;
+  }
+  h1 { font-size: 18px; font-weight: normal; letter-spacing: 1px; margin-bottom: 4px; }
+  .sub { font-size: 11px; color: #5A6358; font-style: italic; margin-bottom: 20px; }
+  .label-gold { font-size: 9px; letter-spacing: 4px; color: #B8962E; text-transform: uppercase; margin-bottom: 8px; }
+
+  /* STEP 1 — Name input */
+  #step-name {
+    width: 100%; max-width: 360px;
+    background: #111812;
+    border: 1px solid #1E3028;
+    border-radius: 10px;
+    padding: 24px;
+    text-align: center;
+  }
+  #step-name input {
+    width: 100%;
+    background: #0A0F0D;
+    border: 1px solid #2A4A38;
+    border-radius: 6px;
+    color: #EEF0EB;
+    font-family: inherit;
+    font-size: 14px;
+    padding: 12px;
+    margin: 12px 0;
+    outline: none;
+    text-align: center;
+  }
+  #step-name input:focus { border-color: #B8962E; }
+  #btn-start {
+    width: 100%;
+    background: #1A4A3A;
+    border: 1px solid #B8962E;
+    border-radius: 6px;
+    color: #B8962E;
+    font-family: inherit;
+    font-size: 11px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    padding: 12px;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  #btn-start:hover { background: #2A6A52; }
+
+  /* STEP 2 — Map */
+  #step-map { width: 100%; max-width: 360px; display: none; }
+  .axis-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 0 28px;
+    margin-bottom: 6px;
+    font-size: 9px;
+    color: #5A6358;
+    letter-spacing: 1px;
+  }
+  .map-wrapper { display: flex; align-items: center; gap: 8px; }
+  .axis-y {
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+    font-size: 9px;
+    color: #5A6358;
+    letter-spacing: 1px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    height: 280px;
+    padding: 8px 0;
+    text-align: center;
+  }
+  #canvas {
+    border-radius: 8px;
+    border: 1px solid #1E3028;
+    cursor: crosshair;
+    touch-action: none;
+    display: block;
+    flex: 1;
+  }
+  .instruction {
+    text-align: center;
+    font-size: 11px;
+    color: #5A6358;
+    margin: 10px 0;
+    font-style: italic;
+  }
+
+  /* STEP 3 — Result */
+  #step-result { width: 100%; max-width: 360px; display: none; text-align: center; }
+  .result-box {
+    background: #111812;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+  .metrics { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+  .metric {
+    background: #0A0F0D;
+    border-radius: 6px;
+    padding: 12px;
+  }
+  .metric-label { font-size: 8px; color: #5A6358; letter-spacing: 2px; text-transform: uppercase; margin-bottom: 4px; }
+  .metric-value { font-size: 22px; font-weight: bold; }
+  .zone-box {
+    border-radius: 8px;
+    padding: 14px;
+    margin-bottom: 12px;
+    text-align: left;
+  }
+  .zone-name { font-size: 14px; font-weight: bold; margin-bottom: 4px; }
+  .zone-sub { font-size: 10px; opacity: 0.7; }
+  .confirm-box {
+    background: #0A0F0D;
+    border: 1px solid #27AE6044;
+    border-radius: 8px;
+    padding: 14px;
+    font-size: 12px;
+    color: #27AE60;
+    margin-bottom: 14px;
+  }
+  #btn-again {
+    width: 100%;
+    background: transparent;
+    border: 1px solid #1E3028;
+    border-radius: 6px;
+    color: #5A6358;
+    font-family: inherit;
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    padding: 10px;
+    cursor: pointer;
+  }
+
+  /* Sending overlay */
+  #sending {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: #0A0F0Dcc;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 12px;
+    font-size: 12px;
+    color: #B8962E;
+    letter-spacing: 3px;
+  }
+  .spinner {
+    width: 32px; height: 32px;
+    border: 2px solid #1E3028;
+    border-top-color: #B8962E;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<!-- OVERLAY SENDING -->
+<div id="sending" style="display:flex; display:none;">
+  <div class="spinner"></div>
+  <span>ZAPISYWANIE...</span>
+</div>
+
+<!-- NAGŁÓWEK -->
+<div class="label-gold">Decathlon · Mapa Nastroju</div>
+<h1>Jak się czujesz dziś?</h1>
+<p class="sub">Jedno kliknięcie · 3 sekundy · anonimowe</p>
+
+<!-- KROK 1: IMIĘ -->
+<div id="step-name">
+  <div class="label-gold">Podaj swoje imię</div>
+  <input type="text" id="input-name" placeholder="np. Marek" maxlength="40" />
+  <div style="font-size:10px; color:#5A6358; margin-bottom:12px;">
+    Dane są widoczne tylko dla Twojego kierownika i HR
+  </div>
+  <button id="btn-start" onclick="startMap()">DALEJ →</button>
+</div>
+
+<!-- KROK 2: MAPA -->
+<div id="step-map">
+  <div class="axis-row">
+    <span>😤 FRUSTRACJA</span>
+    <span>SATYSFAKCJA →</span>
+    <span>SPEŁNIENIE 😊</span>
+  </div>
+  <div class="map-wrapper">
+    <div class="axis-y">
+      <span>⚡ MOC</span>
+      <span>😴 ZMĘCZENIE</span>
+    </div>
+    <canvas id="canvas" width="300" height="280"></canvas>
+  </div>
+  <p class="instruction">↑ Kliknij punkt który opisuje Cię teraz</p>
+</div>
+
+<!-- KROK 3: WYNIK -->
+<div id="step-result">
+  <div class="result-box" id="result-content">
+    <div class="label-gold" style="margin-bottom:14px;">Twój wynik został zapisany</div>
+    <div class="metrics">
+      <div class="metric">
+        <div class="metric-label">Energia</div>
+        <div class="metric-value" id="res-energy" style="color:#27AE60">—</div>
+      </div>
+      <div class="metric">
+        <div class="metric-label">Satysfakcja</div>
+        <div class="metric-value" id="res-satisfaction" style="color:#27AE60">—</div>
+      </div>
+    </div>
+    <div class="zone-box" id="zone-box">
+      <div class="zone-name" id="zone-name">—</div>
+      <div class="zone-sub" id="zone-sub">—</div>
+    </div>
+    <div class="confirm-box">
+      ✓ Dane zapisane · Dziękujemy
+    </div>
+  </div>
+  <button id="btn-again" onclick="reset()">↺ WYPEŁNIJ PONOWNIE</button>
+</div>
+
+<script>
+// ============================================================
+// KONFIGURACJA — zmień ten jeden adres URL po wdrożeniu skryptu
+// ============================================================
+const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwg8NpJE7VOR5y-1fgSiawHIesQQf1QemQlDrJb0KiK54Mjh7Kfm1ZS85kcyZsdbc02yA/exec";
+// ============================================================
+
+const W = 300, H = 280;
+let employeeName = "";
+let canvas, ctx;
+
+const ZONES = [
+  { name: "RYZYKO ODEJŚCIA",    sub: "Wysoka energia · Niska satysfakcja",  color: "#E74C3C", minX:0,   maxX:0.5, minY:0,   maxY:0.5 },
+  { name: "KANDYDAT DO AWANSU", sub: "Wysoka energia · Wysoka satysfakcja", color: "#27AE60", minX:0.5, maxX:1,   minY:0,   maxY:0.5 },
+  { name: "ALERT KRYZYSOWY",    sub: "Niska energia · Niska satysfakcja",   color: "#8B0000", minX:0,   maxX:0.5, minY:0.5, maxY:1   },
+  { name: "STABILNY",           sub: "Niska energia · Wysoka satysfakcja",  color: "#2980B9", minX:0.5, maxX:1,   minY:0.5, maxY:1   },
+];
+
+function getZone(rx, ry) {
+  return ZONES.find(z => rx >= z.minX && rx < z.maxX && ry >= z.minY && ry < z.maxY) || ZONES[3];
+}
+
+function startMap() {
+  const name = document.getElementById("input-name").value.trim();
+  if (!name) { document.getElementById("input-name").focus(); return; }
+  employeeName = name;
+  document.getElementById("step-name").style.display = "none";
+  document.getElementById("step-map").style.display = "block";
+  initCanvas();
+}
+
+function initCanvas() {
+  canvas = document.getElementById("canvas");
+  ctx = canvas.getContext("2d");
+  drawMap(null);
+
+  canvas.addEventListener("click", handleCanvasClick);
+  canvas.addEventListener("touchend", (e) => {
+    e.preventDefault();
+    const t = e.changedTouches[0];
+    const rect = canvas.getBoundingClientRect();
+    const scaleX = W / rect.width;
+    const scaleY = H / rect.height;
+    handlePoint((t.clientX - rect.left) * scaleX, (t.clientY - rect.top) * scaleY);
+  }, { passive: false });
+}
+
+function handleCanvasClick(e) {
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = W / rect.width;
+  const scaleY = H / rect.height;
+  handlePoint((e.clientX - rect.left) * scaleX, (e.clientY - rect.top) * scaleY);
+}
+
+function handlePoint(px, py) {
+  const rx = px / W;
+  const ry = py / H;
+  const energy = Math.round((1 - ry) * 100);
+  const satisfaction = Math.round(rx * 100);
+  const zone = getZone(rx, ry);
+  const stateId = Math.round(px) * H + Math.round(py);
+
+  drawMap({ px, py, zone });
+  setTimeout(() => showResult(energy, satisfaction, zone, stateId, rx, ry), 300);
+}
+
+function drawMap(click) {
+  ctx.clearRect(0, 0, W, H);
+
+  // Zone backgrounds
+  ZONES.forEach(z => {
+    ctx.fillStyle = z.color + "18";
+    ctx.fillRect(z.minX * W, z.minY * H, (z.maxX - z.minX) * W, (z.maxY - z.minY) * H);
+  });
+
+  // Grid
+  ctx.strokeStyle = "#ffffff08";
+  ctx.lineWidth = 1;
+  for (let i = 0; i <= 4; i++) {
+    ctx.beginPath(); ctx.moveTo(i * W/4, 0); ctx.lineTo(i * W/4, H); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(0, i * H/4); ctx.lineTo(W, i * H/4); ctx.stroke();
+  }
+
+  // Axis lines
+  ctx.strokeStyle = "#ffffff22";
+  ctx.lineWidth = 1.5;
+  ctx.setLineDash([4, 4]);
+  ctx.beginPath(); ctx.moveTo(W/2, 0); ctx.lineTo(W/2, H); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(0, H/2); ctx.lineTo(W, H/2); ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Zone labels
+  ctx.font = "bold 9px monospace";
+  ctx.textAlign = "center";
+  [
+    { t: "RYZYKO",  x: W*0.25, y: 16,    c: "#E74C3C" },
+    { t: "AWANS",   x: W*0.75, y: 16,    c: "#27AE60" },
+    { t: "KRYZYS",  x: W*0.25, y: H - 6, c: "#8B0000" },
+    { t: "STABILNY",x: W*0.75, y: H - 6, c: "#2980B9" },
+  ].forEach(l => {
+    ctx.fillStyle = l.c + "BB";
+    ctx.fillText(l.t, l.x, l.y);
+  });
+
+  if (click) {
+    const { px, py, zone } = click;
+    const c = zone.color;
+    [28, 18, 10].forEach((r, i) => {
+      ctx.beginPath();
+      ctx.arc(px, py, r, 0, Math.PI * 2);
+      ctx.strokeStyle = c + ["22","55","99"][i];
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    });
+    ctx.beginPath(); ctx.arc(px, py, 6, 0, Math.PI * 2);
+    ctx.fillStyle = c; ctx.fill();
+    ctx.beginPath(); ctx.arc(px, py, 3, 0, Math.PI * 2);
+    ctx.fillStyle = "#fff"; ctx.fill();
+  }
+}
+
+function showResult(energy, satisfaction, zone, stateId, rx, ry) {
+  document.getElementById("step-map").style.display = "none";
+  document.getElementById("step-result").style.display = "block";
+
+  document.getElementById("res-energy").textContent = energy + "%";
+  document.getElementById("res-energy").style.color = energy > 50 ? "#27AE60" : "#E74C3C";
+  document.getElementById("res-satisfaction").textContent = satisfaction + "%";
+  document.getElementById("res-satisfaction").style.color = satisfaction > 50 ? "#27AE60" : "#E74C3C";
+
+  const zoneBox = document.getElementById("zone-box");
+  zoneBox.style.background = zone.color + "18";
+  zoneBox.style.borderLeft = `4px solid ${zone.color}`;
+  document.getElementById("zone-name").textContent = zone.name;
+  document.getElementById("zone-name").style.color = zone.color;
+  document.getElementById("zone-sub").textContent = zone.sub;
+
+  sendToSheets({ employeeName, energy, satisfaction, zone: zone.name, stateId, rx: Math.round(rx*100), ry: Math.round(ry*100) });
+}
+
+function sendToSheets(data) {
+  if (!SCRIPT_URL || SCRIPT_URL === "https://script.google.com/macros/s/AKfycbwg8NpJE7VOR5y-1fgSiawHIesQQf1QemQlDrJb0KiK54Mjh7Kfm1ZS85kcyZsdbc02yA/exec") return;
+  const sending = document.getElementById("sending");
+  sending.style.display = "flex";
+  const payload = new FormData();
+  Object.entries(data).forEach(([k, v]) => payload.append(k, v));
+  payload.append("timestamp", new Date().toISOString());
+  fetch(SCRIPT_URL, { method: "POST", body: payload })
+    .catch(() => {})
+    .finally(() => { sending.style.display = "none"; });
+}
+
+function reset() {
+  employeeName = "";
+  document.getElementById("input-name").value = "";
+  document.getElementById("step-result").style.display = "none";
+  document.getElementById("step-name").style.display = "block";
+}
+</script>
+</body>
+</html>
